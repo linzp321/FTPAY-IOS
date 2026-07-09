@@ -253,7 +253,7 @@ struct DrawerMenuView: View {
                 isPresented = false
             })
         }
-        .onChange(of: pendingDestination) { _, newValue in
+        .onChange(of: pendingDestination) { newValue in
             if let dest = newValue {
                 switch dest {
                 case .settings:
