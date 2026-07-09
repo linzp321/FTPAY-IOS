@@ -13,19 +13,28 @@ jobs:
       - name: Show Xcode version
         run: xcodebuild -version
 
-      # 关键步骤：补装 iOS 18.2 simulator runtime
-      # 这是修复 actool 报"No simulator runtime available"的根因
-      # 首次下载约 3-5 分钟，下载后会缓存
-      - name: Install iOS simulator runtime
-        run: |
-          echo "Downloading iOS simulator runtime (this may take a few minutes)..."
-          xcodebuild -downloadPlatform iOS
-        timeout-minutes: 15
-
       - uses: actions/checkout@v4
 
       - name: Install XcodeGen
         run: brew install xcodegen
+
+      # ===== Workaround: 绕开 Xcode 16.2 + macos-15 缺 iOS 18.2 sim runtime 的 bug =====
+      # actool 强制要模拟器运行时，镜像里没有、downloadPlatform 也连不上
+      # 暂时移走 Assets.xcassets，xcodegen 不会再生成对它的引用，actool 就不会被触发
+      - name: Move Assets.xcassets aside
+        run: |
+          if [ -d "FTPay/Assets.xcassets" ]; then
+            mv FTPay/Assets.xcassets FTPay/Assets.xcassets.disabled
+            echo "✓ Assets.xcassets moved aside"
+          else
+            echo "Assets.xcassets not present, skipping"
+          fi
+
+      - name: Strip Assets reference from project.yml
+        run: |
+          sed -i.bak '/Assets\.xcassets/d' project.yml
+          echo "--- project.yml after edit ---"
+          cat project.yml
 
       - name: Generate Xcode project
         run: xcodegen generate
