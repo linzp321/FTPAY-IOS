@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    runs-on: macos-15
+    runs-on: macos-14          # ← 改这里（macos-15 队列太长）
 
     steps:
       - name: Show Xcode version
@@ -19,8 +19,6 @@ jobs:
         run: brew install xcodegen
 
       # ===== Workaround: 绕开 Xcode 16.2 + macos-15 缺 iOS 18.2 sim runtime 的 bug =====
-      # actool 强制要模拟器运行时，镜像里没有、downloadPlatform 也连不上
-      # 暂时移走 Assets.xcassets，xcodegen 不会再生成对它的引用，actool 就不会被触发
       - name: Move Assets.xcassets aside
         run: |
           if [ -d "FTPay/Assets.xcassets" ]; then
