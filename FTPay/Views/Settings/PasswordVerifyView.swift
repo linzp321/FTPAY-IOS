@@ -100,7 +100,7 @@ struct PasswordVerifyView: View {
                 }
             }
         }
-        .onChange(of: password) { _, newValue in
+        .onChange(of: password) { newValue in
             if newValue.count == 6 {
                 handleVerify()
             }
