@@ -7,49 +7,55 @@ on:
 
 jobs:
   build:
-    runs-on: macos-15
+    runs-on: macos-14
+
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_15.4.app/Contents/Developer
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Select Xcode 15.4
+        run: sudo xcode-select -s /Applications/Xcode_15.4.app/Contents/Developer
 
-      - name: Select Xcode version
-        run: |
-          sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
+      - name: Verify Xcode
+        run: xcodebuild -version
+
+      - uses: actions/checkout@v4
 
       - name: Install XcodeGen
-        run: |
-          brew install xcodegen
+        run: brew install xcodegen
 
       - name: Generate Xcode project
-        run: |
-          xcodegen generate --project .
+        run: xcodegen generate
 
-      - name: Build app (unsigned)
+      - name: Verify project generated
+        run: ls FTPay.xcodeproj/project.pbxproj
+
+      - name: Build unsigned (iOS Device)
         run: |
           xcodebuild build \
             -project FTPay.xcodeproj \
             -scheme FTPay \
             -destination 'generic/platform=iOS' \
+            -configuration Debug \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
-            -configuration Debug \
             -derivedDataPath ./build
 
-      - name: Create Payload for .ipa
+      - name: Verify .app built
+        run: ls build/Build/Products/Debug-iphoneos/FTPay.app/FTPay
+
+      - name: Package as unsigned IPA
         run: |
-          APP_PATH=$(find ./build -name "FTPay.app" -type d | head -1)
-          echo "App found at: $APP_PATH"
           mkdir -p Payload
-          cp -r "$APP_PATH" Payload/
+          cp -R build/Build/Products/Debug-iphoneos/FTPay.app Payload/
+          zip -r FTPay-unsigned.ipa Payload
+          ls -la FTPay-unsigned.ipa
 
-      - name: Package as .ipa
-        run: |
-          zip -r FTPay.ipa Payload/
-
-      - name: Upload .ipa
+      - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
         with:
-          name: FTPay-unsigned.ipa
-          path: FTPay.ipa
+          name: FTPay-unsigned
+          path: FTPay-unsigned.ipa
+          if-no-files-found: error
+          retention-days: 30
