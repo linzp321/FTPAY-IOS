@@ -7,17 +7,20 @@ on:
 
 jobs:
   build:
-    runs-on: macos-14
-
-    env:
-      DEVELOPER_DIR: /Applications/Xcode_15.4.app/Contents/Developer
+    runs-on: macos-15
 
     steps:
-      - name: Select Xcode 15.4
-        run: sudo xcode-select -s /Applications/Xcode_15.4.app/Contents/Developer
-
-      - name: Verify Xcode
+      - name: Show Xcode version
         run: xcodebuild -version
+
+      # 关键步骤：补装 iOS 18.2 simulator runtime
+      # 这是修复 actool 报"No simulator runtime available"的根因
+      # 首次下载约 3-5 分钟，下载后会缓存
+      - name: Install iOS simulator runtime
+        run: |
+          echo "Downloading iOS simulator runtime (this may take a few minutes)..."
+          xcodebuild -downloadPlatform iOS
+        timeout-minutes: 15
 
       - uses: actions/checkout@v4
 
