@@ -1,0 +1,55 @@
+name: Build FTPay iOS App
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Select Xcode version
+        run: |
+          sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
+
+      - name: Install XcodeGen
+        run: |
+          brew install xcodegen
+
+      - name: Generate Xcode project
+        run: |
+          xcodegen generate --project .
+
+      - name: Build app (unsigned)
+        run: |
+          xcodebuild build \
+            -project FTPay.xcodeproj \
+            -scheme FTPay \
+            -destination 'generic/platform=iOS' \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            -configuration Debug \
+            -derivedDataPath ./build
+
+      - name: Create Payload for .ipa
+        run: |
+          APP_PATH=$(find ./build -name "FTPay.app" -type d | head -1)
+          echo "App found at: $APP_PATH"
+          mkdir -p Payload
+          cp -r "$APP_PATH" Payload/
+
+      - name: Package as .ipa
+        run: |
+          zip -r FTPay.ipa Payload/
+
+      - name: Upload .ipa
+        uses: actions/upload-artifact@v4
+        with:
+          name: FTPay-unsigned.ipa
+          path: FTPay.ipa
