@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    runs-on: macos-14          # ← 改这里（macos-15 队列太长）
+    runs-on: macos-13          # ← 改这里（macos-15 队列太长）
 
     steps:
       - name: Show Xcode version
