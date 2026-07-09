@@ -3,38 +3,39 @@ workflows:
     name: FTPay iOS Build
     max_build_duration: 60
     instance_type: mac_mini_m2
-    environment:
-      xcode: 16.0
+    xcode: 16.0
     triggering:
       events:
         - push
       branch_patterns:
-        - pattern: 'main'
+        - pattern: main
           include: true
     scripts:
       - name: Install xcodegen
-        script: brew install xcodegen
-      - name: Disable Assets.xcassets
         script: |
-          if [ -d "FTPay/Assets.xcassets" ]; then
-            mv FTPay/Assets.xcassets FTPay/Assets.xcassets.disabled
-          fi
-          if [ -f project.yml ]; then
-            sed -i '' '/Assets\.xcassets/d' project.yml || true
-          fi
+          brew install xcodegen
+
+      - name: Remove Assets.xcassets (avoid actool error)
+        script: |
+          rm -rf FTPay/Assets.xcassets
+          echo "Assets.xcassets removed - using hardcoded colors only"
+
       - name: Generate Xcode project
-        script: xcodegen generate
+        script: |
+          xcodegen generate
+
       - name: Build iOS app (unsigned)
         script: |
           xcodebuild build \
             -project FTPay.xcodeproj \
             -scheme FTPay \
-            -destination 'generic/platform=iOS' \
+            -destination generic/platform=iOS \
             -configuration Debug \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
             -derivedDataPath ./build
+
       - name: Package as IPA
         script: |
           mkdir -p Payload
@@ -42,9 +43,5 @@ workflows:
           zip -r FTPay-unsigned.ipa Payload
     artifacts:
       - FTPay-unsigned.ipa
-      - "build/**/*.app"
-      - "build/**/*.dSYM.zip"
-    publishing:
-      scripts:
-        - name: Build done
-          script: echo "✓ Build completed, IPA is in artifacts"
+      - build/**/*.app
+      - build/**/*.dSYM.zip
