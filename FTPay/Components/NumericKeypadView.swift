@@ -1,6 +1,5 @@
 import SwiftUI
 
-// MARK: - Numeric Keypad View
 struct NumericKeypadView: View {
     @Binding var value: String
     let maxLength: Int
@@ -16,7 +15,6 @@ struct NumericKeypadView: View {
 
     var body: some View {
         VStack(spacing: 12) {
-            // Display
             HStack {
                 Text("$")
                     .font(.system(size: 32, weight: .bold))
@@ -32,29 +30,23 @@ struct NumericKeypadView: View {
             .background(Color(.systemGray6))
             .cornerRadius(12)
 
-            // Keypad Grid
             VStack(spacing: 10) {
                 ForEach(0..<4, id: \.self) { row in
                     HStack(spacing: 10) {
                         ForEach(keys[row]) { key in
-                            KeypadButton(key: key) {
-                                handleKey(key)
-                            }
+                            KeypadButton(key: key) { handleKey(key) }
                         }
                     }
                 }
             }
 
-            // Confirm Button
             Button(action: onConfirm) {
                 Text("OK")
                     .font(.headline)
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
                     .frame(height: 56)
-                    .background(
-                        value.isEmpty ? Color.gray : Color.green
-                    )
+                    .background(value.isEmpty ? Color.gray : Color.green)
                     .cornerRadius(12)
             }
             .disabled(value.isEmpty)
@@ -76,17 +68,17 @@ struct NumericKeypadView: View {
                 }
             }
         case .backspace:
-            if !value.isEmpty {
-                value.removeLast()
-            }
+            if !value.isEmpty { value.removeLast() }
+        case .cancel:
+            onCancel?()
+        case .confirm:
+            onConfirm()
         }
     }
 
     private func formatDisplay(_ text: String) -> String {
         if text.isEmpty { return "0.00" }
-        if !text.contains(".") {
-            return text + ".00"
-        }
+        if !text.contains(".") { return text + ".00" }
         let parts = text.split(separator: ".", omittingEmptySubsequences: false)
         if parts.count == 1 { return text + "00" }
         if parts[1].count == 1 { return text + "0" }
@@ -94,15 +86,18 @@ struct NumericKeypadView: View {
     }
 }
 
-// MARK: - Keypad Key Enum
 enum KeypadKey: Identifiable, Equatable {
     case digit(String)
     case backspace
+    case cancel
+    case confirm
 
     var id: String {
         switch self {
         case .digit(let s): return s
         case .backspace: return "back"
+        case .cancel: return "cancel"
+        case .confirm: return "confirm"
         }
     }
 
@@ -110,11 +105,12 @@ enum KeypadKey: Identifiable, Equatable {
         switch self {
         case .digit(let s): return s
         case .backspace: return "X"
+        case .cancel: return "C"
+        case .confirm: return "OK"
         }
     }
 }
 
-// MARK: - Keypad Button
 struct KeypadButton: View {
     let key: KeypadKey
     let action: () -> Void
@@ -141,7 +137,6 @@ struct KeypadButton: View {
     }
 }
 
-// MARK: - Password Keypad (for verification)
 struct PasswordKeypadView: View {
     @Binding var password: String
     let maxLength: Int
@@ -157,7 +152,6 @@ struct PasswordKeypadView: View {
 
     var body: some View {
         VStack(spacing: 16) {
-            // Password Dots Display
             HStack(spacing: 12) {
                 ForEach(0..<maxLength, id: \.self) { index in
                     Circle()
@@ -167,14 +161,11 @@ struct PasswordKeypadView: View {
             }
             .padding(.top, 8)
 
-            // Keypad Grid
             VStack(spacing: 10) {
                 ForEach(0..<4, id: \.self) { row in
                     HStack(spacing: 10) {
                         ForEach(keys[row]) { key in
-                            PwdKeypadButton(key: key) {
-                                handleKey(key)
-                            }
+                            PwdKeypadButton(key: key) { handleKey(key) }
                         }
                     }
                 }
@@ -186,13 +177,13 @@ struct PasswordKeypadView: View {
     private func handleKey(_ key: KeypadKey) {
         switch key {
         case .digit(let d):
-            if password.count < maxLength {
-                password += d
-            }
+            if password.count < maxLength { password += d }
         case .backspace:
-            if !password.isEmpty {
-                password.removeLast()
-            }
+            if !password.isEmpty { password.removeLast() }
+        case .cancel:
+            onCancel?()
+        case .confirm:
+            onConfirm()
         }
     }
 }
@@ -202,7 +193,7 @@ struct PwdKeypadButton: View {
     let action: () -> Void
 
     private var isConfirm: Bool { key == .confirm || key.displayText == "OK" }
-    private var isCancel: Bool { key == .cancel || key.displayText == "X" }
+    private var isCancel: Bool { key == .cancel || key.displayText == "C" }
 
     var body: some View {
         Button(action: action) {
