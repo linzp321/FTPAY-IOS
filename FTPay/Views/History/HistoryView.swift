@@ -56,7 +56,7 @@ struct HistoryView: View {
         .onAppear {
             loadTransactions()
         }
-        .onChange(of: selectedFilter) { _, _ in
+        .onChange(of: selectedFilter) { _ in
             loadTransactions()
         }
     }
