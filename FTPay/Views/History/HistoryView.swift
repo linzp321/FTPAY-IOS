@@ -1,212 +1,118 @@
 import SwiftUI
 
 struct HistoryView: View {
- @EnvironmentObject var appState: AppState
- @State private var selectedFilter: HistoryFilter = .week
- @State private var transactions: [Transaction] = []
- @State private var isLoading: Bool = false
- @State private var selectedDate: Date = Date()
+    @EnvironmentObject var appState: AppState
+    @State private var isLoading: Bool = false
+    
+    var body: some View {
+        NavigationStack {
+            Group {
+                if isLoading {
+                    ProgressView("加载中…")
+                        .progressViewStyle(.circular)
+                } else if appState.transactions.isEmpty {
+                    VStack(spacing: 12) {
+                        Image(systemName: "clock.arrow.circlepath")
+                            .font(.system(size: 60))
+                            .foregroundColor(.secondary)
+                        Text("暂无交易记录")
+                            .font(.headline)
+                            .foregroundColor(.secondary)
+                        Text("完成第一笔交易后将在这里显示")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding()
+                } else {
+                    List(appState.transactions) { tx in
+                        TransactionRow(transaction: tx)
+                    }
+                    .listStyle(.plain)
+                    .refreshable {
+                        await loadHistory()
+                    }
+                }
+            }
+            .navigationTitle("交易记录")
+            .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        Task { await loadHistory() }
+                    } label: {
+                        Image(systemName: "arrow.clockwise")
+                    }
+                }
+            }
+            .task {
+                await loadHistory()
+            }
+        }
+    }
+    
+    private func loadHistory() async {
+        isLoading = true
+        defer { isLoading = false }
+        // 实际项目里这里调用 APIService.fetchHistory
+        try? await Task.sleep(nanoseconds: 300_000_000)
+    }
+}
 
- private let calendar = Calendar.current
- private let dateFormatter: DateFormatter = {
- let formatter = DateFormatter()
- formatter.dateFormat = "MMM d"
- return formatter
- }()
-
- var body: some View {
- ZStack {
- Color(.systemGray6)
- .ignoresSafeArea()
-
- VStack(spacing: 0) {
- HStack {
- NavigationLink(destination: HomeView().navigationBarBackButtonHidden(true)) {
- Image(systemName: "chevron.left")
- .font(.title3)
- .foregroundColor(appState.primaryColor)
- }
- Spacer()
- Text("History")
- .font(.headline)
- Spacer()
- Color.clear.frame(width: 24)
- }
- .padding()
- .background(Color(.systemBackground))
-
- ScrollView {
- VStack(spacing: 16) {
- filterTabs
- dateSelector
- transactionsList
- }
- .padding()
- }
- }
- }
- .navigationBarHidden(true)
- .onAppear { loadTransactions() }
- .onChange(of: selectedFilter) { _, _ in loadTransactions() }
- }
-
- private var filterTabs: some View {
- HStack(spacing: 0) {
- ForEach(HistoryFilter.allCases, id: \.self) { filter in
- Button(action: { selectedFilter = filter }) {
- Text(filter.displayName)
- .font(.subheadline)
- .fontWeight(selectedFilter == filter ? .semibold : .regular)
- .foregroundColor(selectedFilter == filter ? .white : .primary)
- .frame(maxWidth: .infinity)
- .padding(.vertical, 10)
- .background(selectedFilter == filter ? appState.primaryColor : Color.clear)
- .cornerRadius(8)
- }
- }
- }
- .padding(4)
- .background(Color(.systemGray5))
- .cornerRadius(12)
- }
-
- private var dateSelector: some View {
- VStack(alignment: .leading, spacing: 8) {
- Text("Select Date")
- .font(.subheadline)
- .foregroundColor(.secondary)
-
- ScrollView(.horizontal, showsIndicators: false) {
- HStack(spacing: 8) {
- ForEach(getDateRange(), id: \.self) { date in
- DateChip(
- date: date,
- isSelected: calendar.isDate(date, inSameDayAs: selectedDate),
- onTap: { selectedDate = date }
- )
- }
- }
- }
- }
- .padding()
- .background(Color(.systemBackground))
- .cornerRadius(12)
- }
-
- private var transactionsList: some View {
- VStack(spacing: 12) {
- if isLoading {
- HStack {
- Spacer()
- ProgressView()
- Text("Loading...")
- .font(.subheadline)
- .foregroundColor(.secondary)
- Spacer()
- }
- .padding()
- } else if transactions.isEmpty {
- emptyState
- } else {
- summaryCard
- ForEach(groupedTransactions.keys.sorted().reversed(), id: \.self) { dateKey in
- VStack(alignment: .leading, spacing: 8) {
- Text(dateKey)
- .font(.subheadline)
- .fontWeight(.semibold)
- .foregroundColor(.secondary)
- .padding(.horizontal, 4)
-
- VStack(spacing: 0) {
- ForEach(groupedTransactions[dateKey] ?? []) { transaction in
- TransactionRow(transaction: transaction)
- if transaction.id != (groupedTransactions[dateKey]?.last?.id) {
- Divider()
- }
- }
- }
- .padding()
- .background(Color(.systemBackground))
- .cornerRadius(12)
- }
- }
- }
- }
- }
-
- private var emptyState: some View {
- VStack(spacing: 16) {
- Image(systemName: "tray")
- .font(.system(size: 48))
- .foregroundColor(.secondary)
- Text("No transactions found")
- .font(.headline)
- Text("Transactions will appear here after your first payment")
- .font(.subheadline)
- .foregroundColor(.secondary)
- .multilineTextAlignment(.center)
- }
- .padding(48)
- .frame(maxWidth: .infinity)
- .background(Color(.systemBackground))
- .cornerRadius(12)
- }
-
- private var summaryCard: some View {
- HStack(spacing: 24) {
- VStack(alignment: .leading, spacing: 4) {
- Text("Total Transactions")
- .font(.caption)
- .foregroundColor(.secondary)
- Text("\(transactions.count)")
- .font(.title2)
- .fontWeight(.bold)
- .foregroundColor(appState.primaryColor)
- }
-
- Spacer()
-
- VStack(alignment: .trailing, spacing: 4) {
- Text("Total Amount")
- .font(.caption)
- .foregroundColor(.secondary)
- Text(String(format: "$%.2f", transactions.reduce(0) { $0 + $1.amount }))
- .font(.title2)
- .fontWeight(.bold)
- .foregroundColor(.green)
- }
- }
- .padding()
- .background(Color(.systemBackground))
- .cornerRadius(12)
- }
-
- private var groupedTransactions: [String: [Transaction]] {
- let formatter = DateFormatter()
- formatter.dateFormat = "yyyy-MM-dd"
-
- return Dictionary(grouping: transactions) { transaction in
- formatter.string(from: transaction.timestamp)
- }
- }
-
- private func getDateRange() -> [Date] {
- let today = Date()
- return (0..<7).compactMap { offset in
- calendar.date(byAdding: .day, value: -offset, to: today)
- }
- }
-
- private func loadTransactions() {
- isLoading = true
- Task {
- do {
- let fetched = try await APIService.shared.fetchTransactions(filter: selectedFilter)
- await MainActor.run {
- transactions = fetched
- isLoading = false
- }
- } catch {
- await MainActor.run {
- transactions = Transaction.sampleTransa
-...(truncated)...
+struct TransactionRow: View {
+    let transaction: Transaction
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            // 商户图标
+            ZStack {
+                Circle()
+                    .fill(iconBackground)
+                    .frame(width: 44, height: 44)
+                Image(systemName: "storefront.fill")
+                    .foregroundColor(.white)
+            }
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text(transaction.merchantName)
+                    .font(.headline)
+                    .lineLimit(1)
+                Text(formattedDate(transaction.date))
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            
+            Spacer()
+            
+            VStack(alignment: .trailing, spacing: 4) {
+                Text(amountString)
+                    .font(.headline)
+                    .foregroundColor(amountColor)
+                Text(transaction.status.rawValue)
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+        }
+        .padding(.vertical, 4)
+    }
+    
+    private var amountString: String {
+        let prefix = transaction.type == .payment ? "-" : "+"
+        return String(format: "%@¥%.2f", prefix, abs(transaction.amount))
+    }
+    
+    private var amountColor: Color {
+        transaction.type == .payment ? .red : .green
+    }
+    
+    private var iconBackground: Color {
+        transaction.type == .payment ? .blue : .green
+    }
+    
+    private func formattedDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "zh_CN")
+        formatter.dateFormat = "MM-dd HH:mm"
+        return formatter.string(from: date)
+    }
+}
